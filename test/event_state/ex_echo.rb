@@ -9,10 +9,10 @@ module EventState
   #
   class EchoServer < EventState::Machine
     state :listening do
-      on_recv :echo_message, :echoing
+      on_recv :echo_message, :speaking
     end
 
-    state :echoing do
+    state :speaking do
       on_enter do |message|
         send_message message
       end
