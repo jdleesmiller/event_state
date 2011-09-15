@@ -39,7 +39,7 @@ sender.
 
 It has two states, +:listening+ and +:speaking+.
 
-link:echo.png
+link:https://github.com/jdleesmiller/event_state/blob/master/assets/echo.png?raw=true
 
 == INSTALLATION
 
