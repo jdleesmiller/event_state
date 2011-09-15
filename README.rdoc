@@ -1,18 +1,45 @@
 = event_state
 
-* TODO url
+* http://github.com/jdleesmiller/event_state
 
 == SYNOPSIS
 
-TODO description
+A small embedded DSL for implementing stateful protocols in EventMachine using
+finite state machines.
 
-=== Usage
+The protocol is specified in terms of _states_ and _messages_. The state
+determines which messages the machine can send and receive according to the
+protocol. When the machine sends or receives a message, it changes to a new
+state.
 
-  TODO (code sample of usage)
+=== Example: An Echo Machine
 
-== REQUIREMENTS
+This is a fairly small machine. It receives a +noise+ (packaged in an
++EchoMessage+), and, after a short delay, it sends the same noise back to the
+sender.
 
-* TODO (list of requirements)
+  EchoMessage = MessageStruct.new(:noise)
+
+  class EchoServer < EventState::Machine
+    state :listening do
+      on_recv :echo_message, :speaking
+    end
+
+    state :speaking do
+      on_enter do |message|
+        EM.defer do
+          sleep 0.5
+          send_message message
+        end
+      end
+
+      on_send :echo_message, :listening
+    end
+  end
+
+It has two states, +:listening+ and +:speaking+.
+
+link:echo.png
 
 == INSTALLATION
 

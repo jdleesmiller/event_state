@@ -11,8 +11,8 @@ Gem::Specification.new do |s|
   s.authors           = ['John Lees-Miller']
   s.email             = ['jdleesmiller@gmail.com']
   s.homepage          = 'http://github.com/jdleesmiller/event_state'
-  s.summary           = %q{TODO write short gem summary}
-  s.description       = %q{TODO write longer gem description}
+  s.summary           = %q{StateMachines for EventMachines.}
+  s.description       = %q{A small embedded DSL for implementing stateful protocols in EventMachine using finite state machines.}
 
   s.rubyforge_project = 'event_state'
 

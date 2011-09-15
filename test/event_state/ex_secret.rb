@@ -36,12 +36,12 @@ module EventState
 
       on_enter :get_slow_secret do
         EM.defer do
-          sleep 3
+          sleep 1
           send_message SecretMessage.new("43")
         end
       end
 
-      on_send :secret, :authenticated
+      on_send :secret_message, :authenticated
     end
   end
 
@@ -68,12 +68,13 @@ module EventState
         send_message :get_fast_secret
       end
       
-      on_enter :secret do
+      on_enter :secret_message do
         @secrets += 1
         if @secrets == 1
           send_message :get_slow_secret
         else
           send_message :logout
+          EventMachine.stop
         end
       end
     end
@@ -83,3 +84,4 @@ module EventState
     end
   end
 end
+

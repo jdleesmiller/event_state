@@ -1,6 +1,8 @@
 .*.swp
-pkg/*
-*.gem
-.bundle
+/pkg/*
+/.bundle
+/.rvmrc
 /rcov
 /rdoc
+/yard
+/.yardoc

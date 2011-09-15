@@ -2,15 +2,54 @@ module EventState
   #
   # The message object for the {EchoServer} and {EchoClient}s.
   #
-  EchoMessage = Struct.new(:noise)
-  class EchoMessage
-    include EventState::Message
+  EchoMessage = MessageStruct.new(:noise)
+
+  #
+  # Receives a message and sends it back.
+  #
+  class EchoServer < EventState::Machine
+    state :listening do
+      on_recv :echo_message, :echoing
+    end
+
+    state :echoing do
+      on_enter do |message|
+        send_message message
+      end
+
+      on_send :echo_message, :listening
+    end
+  end
+
+  #
+  # Receives a message and sends it back after a short delay.
+  #
+  class DelayedEchoServer < EventState::Machine
+    def initialize delay
+      super
+      @delay = delay
+    end
+
+    state :listening do
+      on_recv :echo_message, :echoing
+    end
+
+    state :echoing do
+      on_enter do |message|
+        EM.defer do
+          sleep @delay
+          send_message message
+        end
+      end
+
+      on_send :echo_message, :listening
+    end
   end
 
   #
   # Receives a message and sends it back. Keeps a log for testing purposes.
   #
-  class EchoServer < EventState::Machine
+  class LoggingEchoServer < EventState::Machine
 
     def initialize log=nil
       super
