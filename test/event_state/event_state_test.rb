@@ -1,6 +1,7 @@
 require 'event_state'
 require 'test/unit'
 
+# load example machines
 require 'event_state/ex_echo'
 require 'event_state/ex_secret'
 
@@ -45,7 +46,6 @@ class TestEventState < Test::Unit::TestCase
       "echoing baz",
       "exiting echoing state",
       "entering listening state"], server_log
-
   end
   
   def test_echo_basic
@@ -93,6 +93,43 @@ DOT
       EventState::Message.class_name_to_message_name('Foo::Bar::MyMessage')
     assert_equal :my_t_l_a, # not necessarily good... but simple
       EventState::Message.class_name_to_message_name('Foo::Bar::MyTLA')
+  end
+
+  #
+  # 
+  #
+  class MachineDSLTester
+    include EventState::MachineDSL
+  end
+
+  def test_dsl_basic
+    #
+    # check that we get the transitions right for this simple DSL
+    #
+    t = MachineDSLTester.new
+    t.state :foo do
+      t.on_recv :hello, :bar
+    end
+    t.state :bar do 
+      t.on_recv :good_bye, :foo
+    end
+
+    assert_equal [
+      [:foo, :recv, :hello, :bar],
+      [:bar, :recv, :good_bye, :foo]], t.transitions
+  end
+
+  def test_dsl_no_nested_states
+    #
+    # nested state blocks are illegal
+    #
+    t = MachineDSLTester.new
+    assert_raises(RuntimeError) {
+      t.state :foo do
+        t.state :bar do
+        end
+      end
+    }
   end
 end
 

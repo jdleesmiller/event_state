@@ -17,7 +17,15 @@ module EventState
     # @return [nil]
     #
     def state state_name
-      @states ||= {}
+      # initialize instance variables on first call (avoid warnings)
+      unless defined?(@state)
+        @state = nil
+        @start_state = nil
+        @states = {}
+      end
+
+      # can't nest these calls
+      raise "cannot nest calls to state" if @state
 
       # create new state or edit exiting state
       @state = @states[state_name] || State.new(state_name)
