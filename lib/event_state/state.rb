@@ -1,10 +1,10 @@
 module EventState
   #
-  # A state in a {Machine}. This class is for internal use; you will not usually
-  # need to use it directly.
+  # A state in a state machine. This class is for internal use; you will not
+  # usually need to use it directly.
   #
   # Note that the <tt>Proc</tt>s stored here are executed in the context of an
-  # instance of the a subclass of {Machine}, rather than in the context in which
+  # instance of a subclass of {MachineBase}, rather than in the context in which
   # they were defined.
   #
   # @attr [Symbol] name state name

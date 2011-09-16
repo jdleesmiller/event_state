@@ -14,15 +14,12 @@ state.
 
 === Example: An Echo Machine
 
-This is a fairly small machine. It receives a +noise+ (packaged in an
-+EchoMessage+), and, after a short delay, it sends the same noise back to the
-sender.
+This machine receives a +noise+ (packaged in an +EchoMessage+), and, after a
+short delay, it sends the same noise back to the sender.
 
-  EchoMessage = MessageStruct.new(:noise)
-
-  class EchoServer < EventState::Machine
+  class EchoServer < EventState::ObjectMachine
     state :listening do
-      on_recv :echo_message, :speaking
+      on_recv String, :speaking
     end
 
     state :speaking do
@@ -33,7 +30,7 @@ sender.
         end
       end
 
-      on_send :echo_message, :listening
+      on_send String, :listening
     end
   end
 
@@ -49,7 +46,16 @@ http://github.com/jdleesmiller/event_state/raw/master/assets/echo.png
 
 TODO developer advice
 
-== RELATED
+== TODO
+
+* want a 'finish_machine' or similar call to work out implicitly defined states
+  (e.g. the current server doesn't have a state block for :done, so transitions
+  to that state fail (tries to call on_enter on a nil state)
+    - we could trap that particular case, but it seems better to have some
+      validation
+    - could wrap it in yet another block, but that seems overkill
+
+== RELATED PROJECTS
 
 http://slagyr.github.com/statemachine
 
@@ -57,7 +63,7 @@ http://slagyr.github.com/statemachine
 
 (The MIT License)
 
-Copyright (c) 2011 TODO
+Copyright (c) 2011 John Lees-Miller
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

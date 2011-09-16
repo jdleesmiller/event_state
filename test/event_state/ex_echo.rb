@@ -1,15 +1,10 @@
 module EventState
   #
-  # The message object for the {EchoServer} and {EchoClient}s.
-  #
-  EchoMessage = MessageStruct.new(:noise)
-
-  #
   # Receives a message and sends it back.
   #
-  class EchoServer < EventState::Machine
+  class EchoServer < EventState::ObjectMachine
     state :listening do
-      on_recv :echo_message, :speaking
+      on_recv String, :speaking
     end
 
     state :speaking do
@@ -17,24 +12,24 @@ module EventState
         send_message message
       end
 
-      on_send :echo_message, :listening
+      on_send String, :listening
     end
   end
 
   #
   # Receives a message and sends it back after a short delay.
   #
-  class DelayedEchoServer < EventState::Machine
+  class DelayedEchoServer < EventState::ObjectMachine
     def initialize delay
       super
       @delay = delay
     end
 
     state :listening do
-      on_recv :echo_message, :echoing
+      on_recv String, :speaking
     end
 
-    state :echoing do
+    state :speaking do
       on_enter do |message|
         EM.defer do
           sleep @delay
@@ -42,14 +37,14 @@ module EventState
         end
       end
 
-      on_send :echo_message, :listening
+      on_send String, :listening
     end
   end
 
   #
   # Receives a message and sends it back. Keeps a log for testing purposes.
   #
-  class LoggingEchoServer < EventState::Machine
+  class LoggingEchoServer < EventState::ObjectMachine
 
     def initialize log=nil
       super
@@ -57,7 +52,7 @@ module EventState
     end
 
     state :listening do
-      on_recv :echo_message, :echoing
+      on_recv String, :speaking
 
       on_enter do
         @log << "entering listening state" if @log
@@ -68,16 +63,16 @@ module EventState
       end
     end
 
-    state :echoing do
-      on_send :echo_message, :listening
+    state :speaking do
+      on_send String, :listening
 
       on_enter do |message|
-        @log << "echoing #{message.noise}" if @log
+        @log << "speaking #{message}" if @log
         send_message message
       end
 
       on_exit do
-        @log << "exiting echoing state" if @log
+        @log << "exiting speaking state" if @log
       end
     end
   end
@@ -97,19 +92,19 @@ module EventState
 
     def post_init
       # send first noise
-      send_object EchoMessage.new(@noises.shift)
+      send_object @noises.shift
     end
 
     def receive_object message
       # record received noise
-      @recorder << message.noise
+      @recorder << message
 
       if @noises.empty?
         # done
         EventMachine.stop
       else
         # make more noises
-        send_object EchoMessage.new(@noises.shift)
+        send_object @noises.shift
       end
     end
   end
@@ -117,7 +112,7 @@ module EventState
   #
   # Send a list of noises to an {EchoServer} and record the echos.
   #
-  class EchoClient < EventState::Machine
+  class EchoClient < EventState::ObjectMachine
     def initialize noises, recorder
       super
       @noises, @recorder = noises, recorder
@@ -126,22 +121,22 @@ module EventState
     attr_accessor :recorder
 
     state :speaking do
-      on_send :echo_message, :listening
+      on_send String, :listening
 
       on_enter do
         if @noises.empty?
           EventMachine.stop
         else
-          send_message EchoMessage.new(@noises.shift)
+          send_message @noises.shift
         end
       end
     end
 
     state :listening do
-      on_recv :echo_message, :speaking
+      on_recv String, :speaking
 
       on_exit do |message|
-        @recorder << message.noise
+        @recorder << message
       end
     end
   end

@@ -1,6 +1,6 @@
 module EventState
   #
-  # The domain-specific language used to construct a {Machine}. See the
+  # The domain-specific language used to construct a machine. See the
   # {file:README} for more examples and more information on how the language
   # works.
   #
@@ -53,8 +53,8 @@ module EventState
     # will be called if no more specific handler was found (see example below).
     #
     # If a catch-all +on_enter+ block is given for the {#start_state}, it is
-    # called from {Machine#post_init}. In this case (and only this case), the
-    # message passed to the block is +nil+.
+    # called from EventMachine's +post_init+ method. In this case (and only this
+    # case), the message passed to the block is +nil+.
     #
     # @example
     #   state :foo do
@@ -91,7 +91,7 @@ module EventState
     # Register a block to be called after the machine exits the current
     # {#state}. See {#on_enter} for more information.
     #
-    # TODO maybe this could be called from +unbind+ if the machine stops in the
+    # TODO maybe this should be called from +unbind+ if the machine stops in the
     # current state
     #
     # @param [Array<Symbol>] message_names zero or more
@@ -239,9 +239,6 @@ module EventState
         raise "#{handler_type} already defined for #{name}" if handlers[name]
         handlers[name] = block
       end
-    end
-
-    def to_dot_edges edges, color
-    end
+    end 
   end
 end
