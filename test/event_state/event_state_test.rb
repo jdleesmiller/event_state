@@ -58,12 +58,12 @@ class TestEventState < Test::Unit::TestCase
         client_args: [%w(foo bar baz), []]).recorder
   end
 
-  def test_delayed_echo
-    assert_equal %w(foo bar baz), 
-      run_server_and_client(DelayedEchoServer, EchoClient,
-        server_args: [0.5],
-        client_args: [%w(foo bar baz), []]).recorder
-  end
+#  def test_delayed_echo
+#    assert_equal %w(foo bar baz), 
+#      run_server_and_client(DelayedEchoServer, EchoClient,
+#        server_args: [0.5],
+#        client_args: [%w(foo bar baz), []]).recorder
+#  end
 
   def test_echo_with_object_protocol_client
     run_echo_test ObjectProtocolEchoClient
@@ -88,35 +88,39 @@ digraph "EventState::EchoClient" {
 DOT
   end
 
-  class MachineDSLTester
-    include EventState::MachineDSL
-  end
+  class TestDSLBasic < EventState::MachineBase; end
 
   def test_dsl_basic
     #
     # check that we get the transitions right for this simple DSL
     #
-    t = MachineDSLTester.new
-    t.state :foo do
-      t.on_recv :hello, :bar
-    end
-    t.state :bar do 
-      t.on_recv :good_bye, :foo
+    trans = nil
+    TestDSLBasic.class_eval do
+      state :foo do
+        on_recv :hello, :bar
+      end
+      state :bar do 
+        on_recv :good_bye, :foo
+      end
+      trans = transitions
     end
 
     assert_equal [
       [:foo, :recv, :hello, :bar],
-      [:bar, :recv, :good_bye, :foo]], t.transitions
+      [:bar, :recv, :good_bye, :foo]], trans
   end
+
+  class TestDSLNoNestedStates < EventState::MachineBase; end
 
   def test_dsl_no_nested_states
     #
     # nested state blocks are illegal
     #
-    t = MachineDSLTester.new
     assert_raises(RuntimeError) {
-      t.state :foo do
-        t.state :bar do
+      TestDSLNoNestedStates.class_eval do
+        state :foo do
+          state :bar do
+          end
         end
       end
     }
