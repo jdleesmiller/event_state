@@ -88,7 +88,7 @@ digraph "EventState::EchoClient" {
 DOT
   end
 
-  class TestDSLBasic < EventState::MachineBase; end
+  class TestDSLBasic < EventState::Machine; end
 
   def test_dsl_basic
     #
@@ -110,7 +110,7 @@ DOT
       [:bar, :recv, :good_bye, :foo]], trans
   end
 
-  class TestDSLNoNestedStates < EventState::MachineBase; end
+  class TestDSLNoNestedStates < EventState::Machine; end
 
   def test_dsl_no_nested_states
     #

@@ -3,17 +3,17 @@ module EventState
   # Base class for a machine in which the messages are ruby objects. See the
   # {file:README} for examples.
   #
-  class ObjectMachine < MachineBase
+  class ObjectMachine < Machine
     include EventMachine::P::ObjectProtocol
 
     #
-    # Override {MachineBase#message_name} to return the class of the message as
-    # the name. You can further override this method to provide your own mapping
-    # from messages to names.
+    # Return the class of the message as the message name. You can override this
+    # method to provide your own mapping from messages to names.
     #
     # @param [Object] message
     #
-    # @return [Object]
+    # @return [Object] must be hashable and comparable by value; for example, a
+    #         symbol, string, number or class makes a good message name
     #
     def message_name message
       message.class

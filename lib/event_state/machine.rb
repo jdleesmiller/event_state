@@ -19,7 +19,7 @@ module EventState
   # 3. Override {#message_name}. This takes a message to be sent or received and
   #    determines its name, which relates the message to the declared protocol.
   #
-  class MachineBase < EventMachine::Connection
+  class Machine < EventMachine::Connection
 
     class << self
       #
