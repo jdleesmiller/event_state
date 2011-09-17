@@ -28,7 +28,7 @@ module EventState
   State = Struct.new(:name,
     :on_enters, :default_on_enter,
     :on_exits,  :default_on_exit,
-    :on_sends,  :on_recvs) do
+    :on_unbind, :on_sends,  :on_recvs) do
     def initialize(*)
       super
       self.on_enters ||= {}

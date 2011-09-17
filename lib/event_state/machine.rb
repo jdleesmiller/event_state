@@ -171,9 +171,6 @@ module EventState
       # Register a block to be called after the machine exits the current
       # {state}. See {on_enter} for more information.
       #
-      # TODO maybe this should be called from +unbind+ if the machine stops in
-      # the current state
-      #
       # @param [Array<Symbol>] message_names zero or more
       #
       # @yield [message]
@@ -222,6 +219,21 @@ module EventState
       end
 
       #
+      # Called when EventMachine calls +unbind+ on the connection while it is in
+      # the current state. This may indicate that the connection has been closed
+      # or timed out. The default is to take no action.
+      #
+      # @yield [] called upon +unbind+
+      #
+      # @return [nil]
+      #
+      def on_unbind &block
+        raise "on_unbind must be called from a state block" unless @state
+        @state.on_unbind = block
+        nil
+      end
+
+      #
       # Declare which state the machine transitions to when one of the given
       # messages is received in this {state}. See {on_send} for more
       # information.
@@ -239,6 +251,22 @@ module EventState
         end
       end
 
+      #
+      # Set or return the handler to be called when a message is sent or
+      # received that is not valid according to the declared protocol. The
+      # default behavior is to raise a runtime error.
+      #
+      # @yield [action, message_name, message]
+      #
+      # @yieldparam [:send, :recv] action whether the error occurred on a send
+      #             or a receive
+      #
+      # @yieldparam [Object] message_name name of the invalid message
+      #
+      # @yieldparam [Object] message the invalid message
+      #
+      # @return [Proc, nil] nil iff block given
+      #
       def on_protocol_error &block
         if block_given?
           @on_protocol_error = block
@@ -357,6 +385,12 @@ module EventState
       @state = self.class.start_state
       @state.call_on_enter self, nil, nil
       nil
+    end
+
+    def unbind
+      puts "#{self.class} UNBIND"
+      handler = @state.on_unbind
+      self.instance_exec(&handler) if handler 
     end
 
     #
