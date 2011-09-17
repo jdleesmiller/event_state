@@ -451,9 +451,6 @@ module EventState
     #
     def transition message_name, message, next_state_name
       @state.call_on_exit  self, message_name, message
-      p next_state_name
-      p self.class.states
-      p self.class.states[next_state_name]
       @state = self.class.states[next_state_name]
       @state.call_on_enter self, message_name, message
     end
