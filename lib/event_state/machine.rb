@@ -51,8 +51,8 @@ module EventState
 
         # add implicitly defined states to @states to avoid having to check for
         # nil states while the machine is running
-        explicit_states = Set[@states.keys]
-        all_states = Set[@states.values.map {|state|
+        explicit_states = Set[*@states.keys]
+        all_states = Set[*@states.values.map {|state|
           state.on_sends.values + state.on_recvs.values}.flatten]
         implicit_states = all_states - explicit_states
         implicit_states.each do |state_name|
@@ -451,6 +451,9 @@ module EventState
     #
     def transition message_name, message, next_state_name
       @state.call_on_exit  self, message_name, message
+      p next_state_name
+      p self.class.states
+      p self.class.states[next_state_name]
       @state = self.class.states[next_state_name]
       @state.call_on_enter self, message_name, message
     end

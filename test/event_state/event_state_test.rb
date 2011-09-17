@@ -52,99 +52,121 @@ class TestEventState < Test::Unit::TestCase
       "entering listening state"], server_log
   end
   
-  def test_echo_basic
-    assert_equal %w(foo bar baz), 
-      run_server_and_client(EchoServer, EchoClient,
-        client_args: [%w(foo bar baz), []]).recorder
-  end
-
-#  def test_delayed_echo
+#  def test_echo_basic
 #    assert_equal %w(foo bar baz), 
-#      run_server_and_client(DelayedEchoServer, EchoClient,
-#        server_args: [0.5],
+#      run_server_and_client(EchoServer, EchoClient,
 #        client_args: [%w(foo bar baz), []]).recorder
 #  end
+#
+##  def test_delayed_echo
+##    assert_equal %w(foo bar baz), 
+##      run_server_and_client(DelayedEchoServer, EchoClient,
+##        server_args: [0.5],
+##        client_args: [%w(foo bar baz), []]).recorder
+##  end
+#
+#  def test_echo_with_object_protocol_client
+#    run_echo_test ObjectProtocolEchoClient
+#  end
+#
+#  def test_echo_with_event_state_client
+#    run_echo_test EchoClient
+#  end
+#
+#  def test_secret_server
+#    run_server_and_client(TopSecretServer, TopSecretClient)
+#  end
+#
+#  def test_print_state_machine_dot
+#    dot = EchoClient.print_state_machine_dot(:graph_options => 'rankdir=LR;')
+#    assert_equal <<DOT, dot.string
+#digraph "EventState::EchoClient" {
+#  rankdir=LR;
+#  speaking [peripheries=2];
+#  speaking -> listening [color=red,label="String"];
+#  listening -> speaking [color=blue,label="String"];
+#}
+#DOT
+#  end
+#
+#  class TestDSLBasic < EventState::Machine; end
+#
+#  def test_dsl_basic
+#    #
+#    # check that we get the transitions right for this simple DSL
+#    #
+#    trans = nil
+#    TestDSLBasic.class_eval do
+#      protocol do
+#        state :foo do
+#          on_recv :hello, :bar
+#        end
+#        state :bar do 
+#          on_recv :good_bye, :foo
+#        end
+#      end
+#      trans = transitions
+#    end
+#
+#    assert_equal [
+#      [:foo, [:recv, :hello], :bar],
+#      [:bar, [:recv, :good_bye], :foo]], trans
+#  end
+#
+#  class TestDSLNoNestedProtocols < EventState::Machine; end
+#
+#  def test_dsl_no_nested_states
+#    #
+#    # nested protocol blocks are illegal
+#    #
+#    assert_raises(RuntimeError) {
+#      TestDSLNoNestedProtocols.class_eval do
+#        protocol do
+#          protocol do
+#          end
+#        end
+#      end
+#    }
+#  end
+#
+#  class TestDSLNoNestedStates < EventState::Machine; end
+#
+#  def test_dsl_no_nested_states
+#    #
+#    # nested state blocks are illegal
+#    #
+#    assert_raises(RuntimeError) {
+#      TestDSLNoNestedStates.class_eval do
+#        protocol do
+#          state :foo do
+#            state :bar do
+#            end
+#          end
+#        end
+#      end
+#    }
+#  end
 
-  def test_echo_with_object_protocol_client
-    run_echo_test ObjectProtocolEchoClient
-  end
+  class TestDSLImplicitState < EventState::Machine; end
 
-  def test_echo_with_event_state_client
-    run_echo_test EchoClient
-  end
-
-  def test_secret_server
-    run_server_and_client(TopSecretServer, TopSecretClient)
-  end
-
-  def test_print_state_machine_dot
-    dot = EchoClient.print_state_machine_dot(:graph_options => 'rankdir=LR;')
-    assert_equal <<DOT, dot.string
-digraph "EventState::EchoClient" {
-  rankdir=LR;
-  speaking [peripheries=2];
-  speaking -> listening [color=red,label="String"];
-  listening -> speaking [color=blue,label="String"];
-}
-DOT
-  end
-
-  class TestDSLBasic < EventState::Machine; end
-
-  def test_dsl_basic
+  def test_dsl_implicit_state
     #
-    # check that we get the transitions right for this simple DSL
+    # if a state is referenced in an on_send or on_recv but is not declared with
+    # state, the protocol method should add it to @states when it terminates
     #
-    trans = nil
-    TestDSLBasic.class_eval do
+    inner_states = nil
+    outer_states = nil
+    TestDSLImplicitState.class_eval do
       protocol do
         state :foo do
-          on_recv :hello, :bar
+          on_send :bar, :baz
         end
-        state :bar do 
-          on_recv :good_bye, :foo
-        end
+        inner_states = states.dup
       end
-      trans = transitions
+      outer_states = states.dup
     end
-
-    assert_equal [
-      [:foo, [:recv, :hello], :bar],
-      [:bar, [:recv, :good_bye], :foo]], trans
-  end
-
-  class TestDSLNoNestedProtocols < EventState::Machine; end
-
-  def test_dsl_no_nested_states
-    #
-    # nested protocol blocks are illegal
-    #
-    assert_raises(RuntimeError) {
-      TestDSLNoNestedProtocols.class_eval do
-        protocol do
-          protocol do
-          end
-        end
-      end
-    }
-  end
-
-  class TestDSLNoNestedStates < EventState::Machine; end
-
-  def test_dsl_no_nested_states
-    #
-    # nested state blocks are illegal
-    #
-    assert_raises(RuntimeError) {
-      TestDSLNoNestedStates.class_eval do
-        protocol do
-          state :foo do
-            state :bar do
-            end
-          end
-        end
-      end
-    }
+    assert_nil inner_states[:baz]
+    assert_kind_of EventState::State, outer_states[:baz]
   end
 end
 
