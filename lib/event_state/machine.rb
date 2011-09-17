@@ -8,20 +8,89 @@ module EventState
   #
   # If you are sending ruby objects as messages, see {ObjectMachine}; it handles
   # serialization (using EventMachine's +ObjectProtocol+) and names messages
-  # according to their classes (but you can easily override this).
+  # according to their classes (but you can override this).
   #
   # If you have some other kind of messages, then you should subclass this class
-  # directly. Three methods are required:
+  # directly. Two methods are required:
   # 1. Override EventMachine's +receive_data+ method to call
   #    {#transition_on_recv} with the received message.
   # 2. Override EventMachine's +send_data+ method to call {#transition_on_send}
   #    with the message to be sent.
-  # 3. Override {#message_name}. This takes a message to be sent or received and
-  #    determines its name, which relates the message to the declared protocol.
+  # Note that {#transition_on_recv} and {#transition_on_send} take a message
+  # _name_ as well as a message. The message name must correspond with the
+  # transitions declared using the DSL ({on_send} and {on_recv} in particular),
+  # and you must define the mapping from messages to message names.
   #
   class Machine < EventMachine::Connection
 
     class << self
+      #
+      # Declare the protocol; pass a block to declare the {state}s.
+      #
+      # When the block terminates, this method declares any 'implicit' states
+      # that have been referenced by {on_send} or {on_recv} but that have not
+      # been declared with {state}. It also does some basic sanity checking.
+      #
+      # There can be multiple protocol blocks declared for one class; it is
+      # equivalent to moving all of the definitions to the same block.
+      #
+      # @yield [] declare the {state}s in the protocol
+      #
+      # @return [nil]
+      #
+      def protocol
+        raise "cannot nest protocol blocks" if defined?(@protocol) && @protocol
+
+        @start_state = nil unless defined?(@start_state)
+        @states = {}       unless defined?(@states)
+
+        @protocol = true
+        @state = nil
+        yield
+        @protocol = false
+
+        # add implicitly defined states to @states to avoid having to check for
+        # nil states while the machine is running
+        explicit_states = Set[@states.keys]
+        all_states = Set[@states.values.map {|state|
+          state.on_sends.values + state.on_recvs.values}.flatten]
+        implicit_states = all_states - explicit_states
+        implicit_states.each do |state_name|
+          @states[state_name] = State.new(state_name)
+        end
+      end
+
+      # 
+      # Exchange sends for receives and receives for sends in the +base+
+      # protocol, and clear all of the {on_enter} and {on_exit} handlers. It
+      # often happens that a server and a client follow protocols with the same
+      # states, but with sends and receives interchanged. This method is
+      # intended to help with this case. You can, for example, reverse a server
+      # and use the passed block to define new {on_enter} and {on_exit} handlers
+      # appropriate for the client.
+      #
+      # The start state is determined by the first state declared in the given
+      # block (not by the protocol being reversed).
+      #
+      # @param [Class] base
+      #
+      # @yield [] define {state}s new {on_enter} and {on_exit} handlers
+      #
+      # @return [nil]
+      #
+      def reverse_protocol base, &block
+        raise "cannot mirror if already have a protocol" if defined?(@protocol)
+
+        @states = Hash[base.states.map {|state_name, state|
+          new_state = EventState::State.new(state_name)
+          new_state.on_recvs = state.on_sends.dup
+          new_state.on_sends = state.on_recvs.dup
+          [state_name, new_state]
+        }]
+
+        protocol(&block)
+      end
+
       #
       # Declare a state; pass a block to configure the state using {on_enter},
       # {on_send} and so on.
@@ -34,14 +103,7 @@ module EventState
       # @return [nil]
       #
       def state state_name
-        # initialize instance variables on first call (avoid warnings)
-        unless defined?(@state)
-          @state = nil
-          @start_state = nil
-          @states = {}
-        end
-
-        # can't nest these calls
+        raise "must be called from within a protocol block" unless @protocol
         raise "cannot nest calls to state" if @state
 
         # create new state or edit exiting state
@@ -51,7 +113,7 @@ module EventState
         yield
 
         # need to know the start state
-        @start_state = @state if @states.empty?
+        @start_state = @state unless @start_state
 
         # index by name for easy lookup
         @states[@state.name] = @state
@@ -183,8 +245,8 @@ module EventState
           nil
         else
           # set default
-          @on_protocol_error ||= proc {|message|
-            raise "bad message: #{$!.inspect}"
+          @on_protocol_error ||= proc {|action,message_name, message|
+            raise "bad message: #{action}: #{message_name}: #{message.inspect}"
           }
 
           @on_protocol_error
@@ -204,50 +266,71 @@ module EventState
       attr_reader :start_state
 
       #
-      # @private
+      # The complete list of transitions declared in the state machine (an edge
+      # list).
+      #
+      # @return [Array] each entry is of the form <tt>[state_name, [:send |
+      #         :recv, message_name], next_state_name]</tt>
       #
       def transitions
         states.values.map{|state|
           [[state.on_sends, :send], [state.on_recvs, :recv]].map {|pairs, kind|
             pairs.map{|message, next_state_name|
-              [state.name, kind, message, next_state_name]}}}.flatten(2)
+              [state.name, [kind, message], next_state_name]}}}.flatten(2)
       end
 
       #
       # Print the state machine in dot (graphviz) format.
       #
-      # The 'send' edges are red and 'receive' edges are blue, and the start
-      # state is indicated by a double border.
+      # By default, the 'send' edges are red and 'receive' edges are blue, and
+      # the start state is indicated by a double border.
       #
-      # @param [IO, nil] io if +nil+, the dot file is returned as a string; if
-      #        not nil, the dot file is written to +io+ 
-      # 
-      # @param [String] graph_options specify dot graph options
+      # @param [Hash] opts extra options
       #
-      # @return [String, nil] if +io+ is +nil+, returns the dot source as a
-      #         string; if +io+ is not +nil+, this method returns +nil+
+      # @option opts [IO] :io (StringIO.new) to print to
       #
-      def print_state_machine_dot io=nil, graph_options=''
-        out = io || StringIO.new
+      # @option opts [String] :graph_options ('') dot graph options
+      #
+      # @option opts [Proc] :message_name_transform transform message names
+      #
+      # @option opts [Proc] :state_name_form transform state names
+      #
+      # @option opts [String] :recv_edge_style ('color=blue')
+      #
+      # @option opts [String] :send_edge_style ('color=red')
+      #
+      # @return [IO] the +:io+ option
+      #
+      def print_state_machine_dot opts={}
+        io                     = opts[:io] || StringIO.new
+        graph_options          = opts[:graph_options] || ''
+        message_name_transform = opts[:message_name_transform] || proc {|x| x}
+        state_name_transform   = opts[:state_name_transform] || proc {|x| x}
+        recv_edge_style        = opts[:recv_edge_style] || 'color=blue'
+        send_edge_style        = opts[:send_edge_style] || 'color=red'
 
-        out.puts "digraph #{self.name.inspect} {\n  #{graph_options}"
+        io.puts "digraph #{self.name.inspect} {\n  #{graph_options}"
 
-        out.puts "  #{start_state.name} [peripheries=2];" # double border
+        io.puts "  #{start_state.name} [peripheries=2];" # double border
         
-        transitions.each do |state_name, kind, message_name, next_state_name|
+        transitions.each do |state_name, (kind, message_name), next_state_name|
+          s0 = state_name_transform.call(state_name)
+          s1 = state_name_transform.call(next_state_name)
+          label = message_name_transform.call(message_name)
+
           style = case kind
                   when :recv then
-                    "color=blue,label=\"#{message_name}\""
+                    "#{recv_edge_style},label=\"#{label}\""
                   when :send then
-                    "color=red,label=\"#{message_name}\""
+                    "#{send_edge_style},label=\"#{label}\""
                   else 
                     raise "unknown kind #{kind}"
                   end
-          out.puts "  #{state_name} -> #{next_state_name} [#{style}];"
+          io.puts "  #{s0} -> #{s1} [#{style}];"
         end
-        out.puts "}"
+        io.puts "}"
 
-        out.string unless io
+        io
       end
 
       private
@@ -306,7 +389,7 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(message)
+        self.class.on_protocol_error.call(:recv, message_name, message)
       else
         transition message_name, message, next_state_name
       end
@@ -350,7 +433,7 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(message)
+        self.class.on_protocol_error.call(:send, message_name, message)
       else
         # let the caller send the message before we transition
         yield message if block_given?

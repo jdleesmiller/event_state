@@ -12,25 +12,27 @@ determines which messages the machine can send and receive according to the
 protocol. When the machine sends or receives a message, it changes to a new
 state.
 
-=== Example: An Echo Machine
+=== Example: Echo Machine
 
-This machine receives a +noise+ (packaged in an +EchoMessage+), and, after a
-short delay, it sends the same noise back to the sender.
+This machine receives a +noise+ (a +String+), and, after a short delay, it sends
+the same noise back to the sender.
 
-  class EchoServer < EventState::ObjectMachine
-    state :listening do
-      on_recv String, :speaking
-    end
-
-    state :speaking do
-      on_enter do |message|
-        EM.defer do
-          sleep 0.5
-          send_message message
-        end
+  class DelayedEchoServer < EventState::ObjectMachine
+    protocol do
+      state :listening do
+        on_recv String, :speaking
       end
 
-      on_send String, :listening
+      state :speaking do
+        on_enter do |message|
+          EM.defer do
+            sleep 0.5
+            send_message message
+          end
+        end
+
+        on_send String, :listening
+      end
     end
   end
 
@@ -45,15 +47,6 @@ http://github.com/jdleesmiller/event_state/raw/master/assets/echo.png
 == DEVELOPMENT
 
 TODO developer advice
-
-== TODO
-
-* want a 'finish_machine' or similar call to work out implicitly defined states
-  (e.g. the current server doesn't have a state block for :done, so transitions
-  to that state fail (tries to call on_enter on a nil state)
-    - we could trap that particular case, but it seems better to have some
-      validation
-    - could wrap it in yet another block, but that seems overkill
 
 == RELATED PROJECTS
 

@@ -3,16 +3,18 @@ module EventState
   # Receives a message and sends it back.
   #
   class EchoServer < EventState::ObjectMachine
-    state :listening do
-      on_recv String, :speaking
-    end
-
-    state :speaking do
-      on_enter do |message|
-        send_message message
+    protocol do
+      state :listening do
+        on_recv String, :speaking
       end
 
-      on_send String, :listening
+      state :speaking do
+        on_enter do |message|
+          send_message message
+        end
+
+        on_send String, :listening
+      end
     end
   end
 
@@ -25,19 +27,21 @@ module EventState
       @delay = delay
     end
 
-    state :listening do
-      on_recv String, :speaking
-    end
-
-    state :speaking do
-      on_enter do |message|
-        EM.defer do
-          sleep @delay
-          send_message message
-        end
+    protocol do
+      state :listening do
+        on_recv String, :speaking
       end
 
-      on_send String, :listening
+      state :speaking do
+        on_enter do |message|
+          EM.defer do
+            sleep @delay
+            send_message message
+          end
+        end
+
+        on_send String, :listening
+      end
     end
   end
 
@@ -51,28 +55,30 @@ module EventState
       @log = log
     end
 
-    state :listening do
-      on_recv String, :speaking
+    protocol do
+      state :listening do
+        on_recv String, :speaking
 
-      on_enter do
-        @log << "entering listening state" if @log
+        on_enter do
+          @log << "entering listening state" if @log
+        end
+
+        on_exit do
+          @log << "exiting listening state" if @log
+        end
       end
 
-      on_exit do
-        @log << "exiting listening state" if @log
-      end
-    end
+      state :speaking do
+        on_send String, :listening
 
-    state :speaking do
-      on_send String, :listening
+        on_enter do |message|
+          @log << "speaking #{message}" if @log
+          send_message message
+        end
 
-      on_enter do |message|
-        @log << "speaking #{message}" if @log
-        send_message message
-      end
-
-      on_exit do
-        @log << "exiting speaking state" if @log
+        on_exit do
+          @log << "exiting speaking state" if @log
+        end
       end
     end
   end
@@ -120,23 +126,25 @@ module EventState
 
     attr_accessor :recorder
 
-    state :speaking do
-      on_send String, :listening
+    protocol do
+      state :speaking do
+        on_send String, :listening
 
-      on_enter do
-        if @noises.empty?
-          EventMachine.stop
-        else
-          send_message @noises.shift
+        on_enter do
+          if @noises.empty?
+            EventMachine.stop
+          else
+            send_message @noises.shift
+          end
         end
       end
-    end
 
-    state :listening do
-      on_recv String, :speaking
+      state :listening do
+        on_recv String, :speaking
 
-      on_exit do |message|
-        @recorder << message
+        on_exit do |message|
+          @recorder << message
+        end
       end
     end
   end

@@ -3,7 +3,7 @@ require 'test/unit'
 
 # load example machines
 require 'event_state/ex_echo'
-#require 'event_state/ex_secret' TODO fix this
+require 'event_state/ex_secret'
 
 class TestEventState < Test::Unit::TestCase
   include EventState
@@ -73,12 +73,13 @@ class TestEventState < Test::Unit::TestCase
     run_echo_test EchoClient
   end
 
-#  def test_secret_server
-#    run_server_and_client(TopSecretServer, TopSecretClient)
-#  end
+  def test_secret_server
+    run_server_and_client(TopSecretServer, TopSecretClient)
+  end
 
   def test_print_state_machine_dot
-    assert_equal <<DOT, EchoClient.print_state_machine_dot(nil, 'rankdir=LR;')
+    dot = EchoClient.print_state_machine_dot(:graph_options => 'rankdir=LR;')
+    assert_equal <<DOT, dot.string
 digraph "EventState::EchoClient" {
   rankdir=LR;
   speaking [peripheries=2];
@@ -96,18 +97,36 @@ DOT
     #
     trans = nil
     TestDSLBasic.class_eval do
-      state :foo do
-        on_recv :hello, :bar
-      end
-      state :bar do 
-        on_recv :good_bye, :foo
+      protocol do
+        state :foo do
+          on_recv :hello, :bar
+        end
+        state :bar do 
+          on_recv :good_bye, :foo
+        end
       end
       trans = transitions
     end
 
     assert_equal [
-      [:foo, :recv, :hello, :bar],
-      [:bar, :recv, :good_bye, :foo]], trans
+      [:foo, [:recv, :hello], :bar],
+      [:bar, [:recv, :good_bye], :foo]], trans
+  end
+
+  class TestDSLNoNestedProtocols < EventState::Machine; end
+
+  def test_dsl_no_nested_states
+    #
+    # nested protocol blocks are illegal
+    #
+    assert_raises(RuntimeError) {
+      TestDSLNoNestedProtocols.class_eval do
+        protocol do
+          protocol do
+          end
+        end
+      end
+    }
   end
 
   class TestDSLNoNestedStates < EventState::Machine; end
@@ -118,8 +137,10 @@ DOT
     #
     assert_raises(RuntimeError) {
       TestDSLNoNestedStates.class_eval do
-        state :foo do
-          state :bar do
+        protocol do
+          state :foo do
+            state :bar do
+            end
           end
         end
       end
