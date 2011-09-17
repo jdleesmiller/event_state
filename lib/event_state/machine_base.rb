@@ -21,9 +21,6 @@ module EventState
   #
   class MachineBase < EventMachine::Connection
 
-    # include the DSL methods in the metaclass
-    # the parentheses are here to avoid confusing yard; without them, it
-    # reports the DSL methods as instance methods for this class (20110915) 
     class << self
       #
       # Declare a state; pass a block to configure the state using {on_enter},
@@ -280,25 +277,6 @@ module EventState
     end
 
     #
-    # Get the name of a message; this method maps the data sent or received by
-    # the machine to the message names used to define the transitions (using
-    # {on_send} on {on_recv}).
-    #
-    # The requirements are that a message name must be hashable and comparable
-    # by value. For example, a symbol, string, number or class makes a good
-    # message name; so does a ruby Struct.
-    #
-    # @param [Object] message to be sent
-    #
-    # @return [Object] message name
-    #
-    # @abstract
-    #
-    def message_name message
-      raise NotImplementedError
-    end
-
-    #
     # Move the state machine from its current state to the successor state that
     # it should be in after receiving the given +message+, according to the
     # protocol defined using the DSL.
@@ -312,21 +290,25 @@ module EventState
     # 3. the +on_enter+ handler of the new current state is called with
     #    +message+
     #
+    # @param [Object] message_name the name for +message+; this is what relates
+    #        the message data to the transitions defined with {on_send}; must be
+    #        hashable and comparable by value; for example, a symbol, string,
+    #        number or class makes a good message name
+    #
     # @param [Object] message received
     #
     # @return [nil]
     #
-    def transition_on_recv message
-      msg_name = message_name(message)
-      puts "#{self.class}: RECV #{msg_name} #{message.inspect}"
+    def transition_on_recv message_name, message
+      puts "#{self.class}: RECV #{message_name} #{message.inspect}"
       # look up successor state
-      next_state_name = @state.on_recvs[msg_name]
+      next_state_name = @state.on_recvs[message_name]
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
         self.class.on_protocol_error.call(message)
       else
-        transition msg_name, message, next_state_name
+        transition message_name, message, next_state_name
       end
 
       nil
@@ -349,6 +331,11 @@ module EventState
     #
     # @param [Object] message received
     #
+    # @param [Object] message_name the name for +message+; this is what relates
+    #        the message data to the transitions defined with {on_send}; must be
+    #        hashable and comparable by value; for example, a symbol, string,
+    #        number or class makes a good message name
+    #
     # @yield [message] should actually send the message, typically using
     #        EventMachine's +send_data+ method
     #
@@ -356,11 +343,10 @@ module EventState
     #
     # @return [nil]
     #
-    def transition_on_send message
-      msg_name = message_name(message)
-      puts "#{self.class}: SEND #{msg_name} #{message.inspect}"
+    def transition_on_send message_name, message
+      puts "#{self.class}: SEND #{message_name} #{message.inspect}"
       # look up successor state
-      next_state_name = @state.on_sends[msg_name]
+      next_state_name = @state.on_sends[message_name]
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
@@ -369,7 +355,7 @@ module EventState
         # let the caller send the message before we transition
         yield message if block_given?
         
-        transition msg_name, message, next_state_name
+        transition message_name, message, next_state_name
       end
 
       nil

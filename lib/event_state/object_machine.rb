@@ -32,7 +32,7 @@ module EventState
     # @return [nil]
     #
     def receive_object message
-      transition_on_recv message
+      transition_on_recv message_name(message), message
     end
 
     #
@@ -44,7 +44,7 @@ module EventState
     # @return [nil]
     #
     def send_message message
-      transition_on_send message do |msg|
+      transition_on_send message_name(message), message do |msg|
         send_object msg
       end
     end
