@@ -52,19 +52,18 @@ class TestEventState < Test::Unit::TestCase
       "entering listening state"], server_log
   end
   
-=begin
   def test_echo_basic
     assert_equal %w(foo bar baz), 
       run_server_and_client(EchoServer, EchoClient,
         client_args: [%w(foo bar baz), []]).recorder
   end
 
-#  def test_delayed_echo
-#    assert_equal %w(foo bar baz), 
-#      run_server_and_client(DelayedEchoServer, EchoClient,
-#        server_args: [0.5],
-#        client_args: [%w(foo bar baz), []]).recorder
-#  end
+  def test_delayed_echo
+    assert_equal %w(foo bar baz), 
+      run_server_and_client(DelayedEchoServer, EchoClient,
+        server_args: [0.5],
+        client_args: [%w(foo bar baz), []]).recorder
+  end
 
   def test_echo_with_object_protocol_client
     run_echo_test ObjectProtocolEchoClient
@@ -169,7 +168,6 @@ DOT
     assert_nil inner_states[:baz]
     assert_kind_of EventState::State, outer_states[:baz]
   end
-=end
 
   class TestDelayClient < EventState::ObjectMachine
     def initialize log, delays
