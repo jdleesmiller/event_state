@@ -34,10 +34,8 @@ module EventState
 
       state :speaking do
         on_enter do |message|
-          EM.defer do
-            sleep @delay
-            send_message message
-          end
+          EM.defer proc { sleep @delay },
+                   proc { send_message message }
         end
 
         on_send String, :listening

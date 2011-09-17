@@ -197,12 +197,10 @@ module EventState
       # @example
       #   state :foo do
       #     on_enter do
-      #       EM.defer do
-      #         sleep 3
-      #         send_message :done
-      #       end
+      #       EM.defer proc { sleep 3 },
+      #                proc { send_message DoneMessage.new(42) }
       #     end
-      #     on_send :done, :bar
+      #     on_send DoneMessage, :bar
       #   end
       #
       # @param [Array<Symbol>] message_names one or more
@@ -387,10 +385,17 @@ module EventState
       nil
     end
 
+    #
+    # Called by +EventMachine+ when a connection is closed. This calls the
+    # {on_unbind} handler for the current state. 
+    #
+    # @return [nil]
+    #
     def unbind
       puts "#{self.class} UNBIND"
       handler = @state.on_unbind
       self.instance_exec(&handler) if handler 
+      nil
     end
 
     #

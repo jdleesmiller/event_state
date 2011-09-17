@@ -41,8 +41,7 @@ module EventState
         end
 
         on_enter GetBigSecretMessage do
-          EM.defer do
-            sleep 1 # takes a while to compute this one
+          EM.add_timer(1) do # takes a while to compute this one
             send_message SecretMessage.new("43")
           end
         end

@@ -180,12 +180,13 @@ DOT
       state :foo do
         on_send String, :bar
         on_enter do
-          EM.defer do
+          EM.defer proc {
             @log << "sleeping in foo"
             sleep @delays.shift
             @log << "finished sleep in foo"
+          }, proc {
             send_message 'awake!'
-          end
+          }
         end
         on_unbind do
           @log << "unbound in foo"
@@ -194,10 +195,13 @@ DOT
 
       state :bar do
         on_enter do
-          @log << "sleeping in bar"
-          sleep @delays.shift
-          @log << "finished sleep in bar"
-          close_connection
+          EM.defer proc {
+            @log << "sleeping in bar"
+            sleep @delays.shift
+            @log << "finished sleep in bar"
+          }, proc {
+            close_connection
+          }
         end
         on_unbind do
           @log << "unbound in bar"
@@ -249,11 +253,9 @@ DOT
     assert_equal [
       "entered foo",
       "unbound in foo"], server_log
-    assert_equal [
-      "sleeping in foo",
-      "finished sleep in foo",
-      "sleeping in bar",
-      "unbound in bar"], client_log
+
+    # the client log isn't entirely deterministic; depends on threading
+    assert_equal "sleeping in foo", client_log.first
 
     #
     # next, set delays so that we time out in the second server state (bar)
