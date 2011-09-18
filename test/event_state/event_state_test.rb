@@ -56,7 +56,6 @@ class TestEventState < Test::Unit::TestCase
       "entering listening state"], server_log
   end
   
-=begin
   def test_echo_basic
     assert_equal %w(foo bar baz), 
       run_server_and_client(EchoServer, EchoClient,
@@ -280,10 +279,81 @@ DOT
       "sleeping in bar",
       "unbound in bar"], client_log
   end
-=end
 
   def test_readme_example
     MessageEchoClient.demo
+  end
+
+  class TestProtocolErrorSend < EventState::ObjectMachine
+    protocol do
+      state :foo do
+        on_send String, :bar
+        on_enter do
+          send_message 42
+        end
+      end
+    end
+  end
+
+  def test_protocol_error_on_send
+    #
+    # TestProtocolErrorSend sends an integer instead of a string; this should
+    # cause an error on the server side; the server doesn't shut down; it just
+    # calls the EM error_handler
+    #
+    error = nil
+    EM.run do
+      EM.error_handler do |e|
+        # we get a ConnectionNotBound error from the client, too
+        error = e if !error
+        EM.stop
+      end
+      EM.start_server DEFAULT_HOST, DEFAULT_PORT, TestProtocolErrorSend 
+      EM.connect DEFAULT_HOST, DEFAULT_PORT do
+        # just want to force the server to init
+      end
+    end
+
+    assert_kind_of ProtocolError, error
+    assert_kind_of TestProtocolErrorSend, error.machine
+    assert_equal   :foo, error.state_name
+    assert_equal   :send, error.action
+    assert_equal   Fixnum, error.message_name
+    assert_equal   42, error.data
+  end
+
+  class TestProtocolErrorClient < EventState::ObjectMachine
+    protocol do
+      state :foo do
+        on_send Fixnum, :bar
+        on_enter do
+          send_message 42
+        end
+      end
+    end
+  end
+
+  def test_protocol_error_on_recv
+    #
+    # the EchoServer expects a String, but TestProtocolErrorClient gives it an
+    # integer; this causes a protocol error
+    #
+    error = nil
+    EM.run do
+      EM.error_handler do |e|
+        error = e
+        EM.stop
+      end
+      EM.start_server DEFAULT_HOST, DEFAULT_PORT, EchoServer 
+      EM.connect DEFAULT_HOST, DEFAULT_PORT, TestProtocolErrorClient
+    end
+
+    assert_kind_of ProtocolError, error
+    assert_kind_of EchoServer, error.machine
+    assert_equal   :listening, error.state_name
+    assert_equal   :recv, error.action
+    assert_equal   Fixnum, error.message_name
+    assert_equal   42, error.data
   end
 end
 

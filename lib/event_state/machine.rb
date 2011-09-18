@@ -22,7 +22,6 @@ module EventState
   # declared using the DSL ({on_send} and {on_recv} in particular).
   #
   class Machine < EventMachine::Connection
-
     class << self
       #
       # Declare the protocol; pass a block to declare the {state}s.
@@ -250,41 +249,6 @@ module EventState
       end
 
       #
-      # Set or return the handler to be called when a message is sent or
-      # received that is not valid according to the declared protocol. The
-      # default behavior is to raise a runtime error.
-      #
-      # @yield [state, action, message_name, message]
-      #
-      # @yieldparam [Object] state_name the name of the machine's current state
-      #
-      # @yieldparam [:send, :recv] action whether the error occurred on a send
-      #             or a receive
-      #
-      # @yieldparam [Object] message_name name of the invalid message
-      #
-      # @yieldparam [Object] message the invalid message
-      #
-      # @return [Proc, nil] nil iff block given
-      #
-      def on_protocol_error &block
-        if block_given?
-          @on_protocol_error = block
-          nil
-        else
-          # set default
-          @on_protocol_error ||= proc {|state_name,action,message_name,message|
-            raise <<ERR
-protocol error in #{state_name.inspect}: #{action} #{message_name}:
-"#{message.inspect}"
-ERR
-          }
-
-          @on_protocol_error
-        end
-      end
-
-      #
       # @return [Hash<Symbol, State>] map from state names (ruby symbols) to
       #         {State}s
       #
@@ -409,7 +373,7 @@ ERR
     # protocol defined using the DSL.
     #
     # If the received message is not valid according to the protocol, then the
-    # protocol error handler is called (see {on_protocol_error}). 
+    # protocol error handler is called (see {ProtocolError}). 
     #
     # The precise order of events is:
     # 1. the +on_exit+ handler of the current state is called with +message+ 
@@ -433,8 +397,7 @@ ERR
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(
-          @state.name, :recv, message_name, message)
+        raise ProtocolError.new(self, @state.name, :recv, message_name, message)
       else
         transition message_name, message, next_state_name
       end
@@ -448,7 +411,7 @@ ERR
     # protocol defined using the DSL.
     #
     # If the message to be sent is not valid according to the protocol, then the
-    # protocol error handler is called (see {on_protocol_error}). If
+    # protocol error handler is called (see {ProtocolError}). If
     # the message is valid, then the precise order of events is:
     # 1. this method yields the message to the supplied block (if any); the
     #    intention is that the block is used to actually send the message
@@ -478,8 +441,7 @@ ERR
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(
-          @state.name, :send, message_name, message)
+        raise ProtocolError.new(self, @state.name, :send, message_name, message)
       else
         # let the caller send the message before we transition
         yield message if block_given?
