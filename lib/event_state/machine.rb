@@ -254,7 +254,9 @@ module EventState
       # received that is not valid according to the declared protocol. The
       # default behavior is to raise a runtime error.
       #
-      # @yield [action, message_name, message]
+      # @yield [state, action, message_name, message]
+      #
+      # @yieldparam [Object] state_name the name of the machine's current state
       #
       # @yieldparam [:send, :recv] action whether the error occurred on a send
       #             or a receive
@@ -271,8 +273,11 @@ module EventState
           nil
         else
           # set default
-          @on_protocol_error ||= proc {|action,message_name, message|
-            raise "bad message: #{action}: #{message_name}: #{message.inspect}"
+          @on_protocol_error ||= proc {|state_name,action,message_name, message|
+            raise <<ERR
+protocol error in #{state_name.inspect}: #{action} #{message_name}:
+"#{message.inspect}"
+ERR
           }
 
           @on_protocol_error
@@ -428,7 +433,8 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(:recv, message_name, message)
+        self.class.on_protocol_error.call(
+          @state.name, :recv, message_name, message)
       else
         transition message_name, message, next_state_name
       end
@@ -472,7 +478,8 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        self.class.on_protocol_error.call(:send, message_name, message)
+        self.class.on_protocol_error.call(
+          @state.name, :send, message_name, message)
       else
         # let the caller send the message before we transition
         yield message if block_given?

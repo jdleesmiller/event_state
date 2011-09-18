@@ -3,6 +3,7 @@ require 'test/unit'
 
 # load example machines
 require 'event_state/ex_echo'
+require 'event_state/ex_readme'
 require 'event_state/ex_secret'
 
 # give more helpful errors
@@ -55,6 +56,7 @@ class TestEventState < Test::Unit::TestCase
       "entering listening state"], server_log
   end
   
+=begin
   def test_echo_basic
     assert_equal %w(foo bar baz), 
       run_server_and_client(EchoServer, EchoClient,
@@ -277,6 +279,11 @@ DOT
       "finished sleep in foo",
       "sleeping in bar",
       "unbound in bar"], client_log
+  end
+=end
+
+  def test_readme_example
+    MessageEchoClient.demo
   end
 end
 

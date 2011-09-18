@@ -47,7 +47,54 @@ default) it uses the class of the message object as the message name. In this
 example, the message name is +Noise+. +Machine+ provides the state machine DSL
 and the primitives for handling arbitrary kinds of messages.
 
+Here is the corresponding client and a demo showing how to run it:
+
+  class MessageEchoClient < EventState::ObjectMachine
+    Noise = MessageEchoServer::Noise
+
+    def initialize noises
+      super
+      @noises = noises
+    end
+
+    protocol do
+      state :speaking do
+        on_send Noise, :listening
+
+        on_enter do
+          if @noises.empty?
+            EM.stop
+          else
+            send_message MessageEchoServer::Noise.new(@noises.shift)
+          end
+        end
+      end
+
+      state :listening do
+        on_recv Noise, :speaking
+
+        on_enter do |noise|
+          puts "heard: #{noise.content}"
+        end
+      end
+    end
+
+    def self.demo
+      EM.run do
+        EM.start_server('localhost', 14159, MessageEchoServer)
+        EM.connect('localhost', 14159, MessageEchoClient, %w(foo bar baz))
+      end
+    end
+  end
+
+Output:
+  heard: foo
+  heard: bar
+  heard: baz
+
 == INSTALLATION
+
+Not yet released; will eventually be installable with:
 
   gem install event_state
 
