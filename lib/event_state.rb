@@ -48,6 +48,9 @@ module EventState
     #
     attr_reader :data
 
+    #
+    # @return [String]
+    #
     def inspect
       "#<#{self.class}: for #{machine.class} in"\
         " #{state_name.inspect} state: #{action} #{message_name}>"
