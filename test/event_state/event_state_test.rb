@@ -5,6 +5,9 @@ require 'test/unit'
 require 'event_state/ex_echo'
 require 'event_state/ex_secret'
 
+# give more helpful errors
+Thread.abort_on_exception = true
+
 class TestEventState < Test::Unit::TestCase
   include EventState
 

@@ -44,6 +44,7 @@ module EventState
     # @return [nil]
     #
     def send_message message
+      raise "not on the reactor thread" unless EM.reactor_thread?
       transition_on_send message_name(message), message do |msg|
         send_object msg
       end
