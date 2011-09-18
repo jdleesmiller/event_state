@@ -17,9 +17,9 @@ module EventState
   # 2. Override EventMachine's +send_data+ method to call {#transition_on_send}
   #    with the message to be sent.
   # Note that {#transition_on_recv} and {#transition_on_send} take a message
-  # _name_ as well as a message. The message name must correspond with the
-  # transitions declared using the DSL ({on_send} and {on_recv} in particular),
-  # and you must define the mapping from messages to message names.
+  # _name_ as well as a message. You have to define the mapping from messages
+  # to message names so that the message names correspond with the transitions
+  # declared using the DSL ({on_send} and {on_recv} in particular).
   #
   class Machine < EventMachine::Connection
 
@@ -273,7 +273,7 @@ module EventState
           nil
         else
           # set default
-          @on_protocol_error ||= proc {|state_name,action,message_name, message|
+          @on_protocol_error ||= proc {|state_name,action,message_name,message|
             raise <<ERR
 protocol error in #{state_name.inspect}: #{action} #{message_name}:
 "#{message.inspect}"

@@ -40,12 +40,16 @@ In a picture (generated from the code above using
 
 http://github.com/jdleesmiller/event_state/raw/master/assets/echo.png
 
+Here the start state is indicated by a double circle, a blue arrow is a message
+that can be received, and a red arrow is a message that can be sent.
+
 The {EventState::ObjectMachine} base class extends {EventState::Machine}, which
-in turn extends +EventMachine::Connection+. +ObjectMachine+ handles serializing
-and deserializing the ruby objects using +EventMachine::ObjectProtocol+, and (by
-default) it uses the class of the message object as the message name. In this
-example, the message name is +Noise+. +Machine+ provides the state machine DSL
-and the primitives for handling arbitrary kinds of messages.
+in turn extends <tt>EventMachine::Connection</tt>. +ObjectMachine+ handles
+serializing and deserializing the ruby objects using
+<tt>EventMachine::ObjectProtocol</tt>, and (by default) it uses the class of the
+message object as the message name. In this example, the message name is
++Noise+. +Machine+ provides the state machine DSL and the primitives for
+handling arbitrary kinds of messages.
 
 Here is the corresponding client and a demo showing how to run it:
 
