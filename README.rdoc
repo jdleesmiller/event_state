@@ -5,52 +5,59 @@
 == SYNOPSIS
 
 A small embedded DSL for implementing stateful protocols in EventMachine using
-finite state machines.
+finite state machines. The protocol is specified in terms of _states_ and
+_messages_. The processing happens in the states, and the messages that can be
+sent or received from each state are declared by name using the DSL.
 
-The protocol is specified in terms of _states_ and _messages_. The state
-determines which messages the machine can send and receive according to the
-protocol. When the machine sends or receives a message, it changes to a new
-state.
+Here's everyone's favorite example: an echo server. It starts in the
++:listening+ state, in which it can receive a +Noise+ message. It then
+transitions to the +:speaking+ state. After a short delay (+EM.add_timer+), it
+sends the noise back to the client, which causes it to transition back to the
+listening state.
 
-=== Example: Echo Machine
+  class MessageEchoServer < EventState::ObjectMachine
+    Noise = Struct.new(:content)
 
-This machine receives a +noise+ (a +String+), and, after a short delay, it sends
-the same noise back to the sender.
-
-  class DelayedEchoServer < EventState::ObjectMachine
     protocol do
       state :listening do
-        on_recv String, :speaking
+        on_recv Noise, :speaking
       end
 
       state :speaking do
-        on_enter do |message|
-          EM.defer do
-            sleep 0.5
-            send_message message
+        on_send Noise, :listening
+
+        on_enter do |noise|
+          EM.add_timer 0.5 do
+            send_message Noise.new(noise.content)
           end
         end
-
-        on_send String, :listening
       end
     end
   end
 
-It has two states, +:listening+ and +:speaking+.
+In a picture (generated from the code above using
+{EventState::Machine.print_state_machine_dot}):
 
 http://github.com/jdleesmiller/event_state/raw/master/assets/echo.png
 
+The {EventState::ObjectMachine} base class extends {EventState::Machine}, which
+in turn extends +EventMachine::Connection+. +ObjectMachine+ handles serializing
+and deserializing the ruby objects using +EventMachine::ObjectProtocol+, and (by
+default) it uses the class of the message object as the message name. In this
+example, the message name is +Noise+. +Machine+ provides the state machine DSL
+and the primitives for handling arbitrary kinds of messages.
+
 == INSTALLATION
 
-  sudo gem install event_state
-
-== DEVELOPMENT
-
-TODO developer advice
+  gem install event_state
 
 == RELATED PROJECTS
 
-http://slagyr.github.com/statemachine
+This library was inspired by http://slagyr.github.com/statemachine which
+provides a nice DSL for defining state machines but doesn't integrate directly
+with EventMachine. See also the http://www.complang.org/ragel state machine
+compiler and Zed Shaw's http://zedshaw.com/essays/ragel_state_charts.html blog
+post about it.
 
 == LICENSE
 
