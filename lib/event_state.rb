@@ -11,10 +11,9 @@ require 'event_state/object_machine'
 module EventState
 
   #
-  # Error raised by {Machine} when a message that is invalid according to the
-  # machine's protocol is sent or received.
+  # Base class for {SendProtocolError} and {RecvProtocolError}.
   #
-  # You can catch this error by registering a block with
+  # You can catch these errors by registering a block with
   # <tt>EventMachine.error_handler</tt>.
   #
   class ProtocolError < RuntimeError
@@ -54,6 +53,26 @@ module EventState
     def inspect
       "#<#{self.class}: for #{machine.class} in"\
         " #{state_name.inspect} state: #{action} #{message_name}>"
+    end
+  end
+
+  #
+  # Error raised by {Machine} when a message that is invalid according to the
+  # machine's protocol is sent.
+  #
+  class SendProtocolError < ProtocolError
+    def initialize machine, state_name, message_name, data
+      super machine, state_name, :send, message_name, data
+    end
+  end
+
+  #
+  # Error raised by {Machine} when a message that is invalid according to the
+  # machine's protocol is received.
+  #
+  class RecvProtocolError < ProtocolError
+    def initialize machine, state_name, message_name, data
+      super machine, state_name, :recv, message_name, data
     end
   end
 end

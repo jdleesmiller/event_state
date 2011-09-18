@@ -314,7 +314,7 @@ DOT
       end
     end
 
-    assert_kind_of ProtocolError, error
+    assert_kind_of SendProtocolError, error
     assert_kind_of TestProtocolErrorSend, error.machine
     assert_equal   :foo, error.state_name
     assert_equal   :send, error.action
@@ -348,7 +348,7 @@ DOT
       EM.connect DEFAULT_HOST, DEFAULT_PORT, TestProtocolErrorClient
     end
 
-    assert_kind_of ProtocolError, error
+    assert_kind_of RecvProtocolError, error
     assert_kind_of EchoServer, error.machine
     assert_equal   :listening, error.state_name
     assert_equal   :recv, error.action

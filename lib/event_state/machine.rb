@@ -397,7 +397,7 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        raise ProtocolError.new(self, @state.name, :recv, message_name, message)
+        raise RecvProtocolError.new(self, @state.name, message_name, message)
       else
         transition message_name, message, next_state_name
       end
@@ -441,7 +441,7 @@ module EventState
 
       # if there is no registered successor state, it's a protocol error
       if next_state_name.nil?
-        raise ProtocolError.new(self, @state.name, :send, message_name, message)
+        raise SendProtocolError.new(self, @state.name, message_name, message)
       else
         # let the caller send the message before we transition
         yield message if block_given?
