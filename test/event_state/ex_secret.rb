@@ -10,9 +10,6 @@ module EventState
   class TopSecretServer < EventState::ObjectMachine
     protocol do
       state :unathenticated do
-        on_enter do
-          puts "server started"
-        end
         on_recv LoginMessage, :authenticating
       end
 

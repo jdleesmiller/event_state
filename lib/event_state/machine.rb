@@ -361,7 +361,7 @@ module EventState
     # @return [nil]
     #
     def unbind
-      puts "#{self.class} UNBIND"
+      #puts "#{self.class} UNBIND"
       handler = @state.on_unbind
       self.instance_exec(&handler) if handler 
       nil
@@ -391,7 +391,7 @@ module EventState
     # @return [nil]
     #
     def transition_on_recv message_name, message
-      puts "#{self.class}: RECV #{message_name} #{message.inspect}"
+      #puts "#{self.class}: RECV #{message_name}"
       # look up successor state
       next_state_name = @state.on_recvs[message_name]
 
@@ -435,7 +435,7 @@ module EventState
     # @return [nil]
     #
     def transition_on_send message_name, message
-      puts "#{self.class}: SEND #{message_name} #{message.inspect}"
+      #puts "#{self.class}: SEND #{message_name}"
       # look up successor state
       next_state_name = @state.on_sends[message_name]
 
