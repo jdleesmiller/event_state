@@ -98,8 +98,6 @@ Output:
 
 == INSTALLATION
 
-Not yet released; will eventually be installable with:
-
   gem install event_state
 
 == RELATED PROJECTS
