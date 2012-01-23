@@ -78,8 +78,8 @@ class TestEventState < Test::Unit::TestCase
   def run_echo_test client_class
     server_log = []
     recorder = run_server_and_client(LoggingEchoServer, client_class,
-      server_args: [server_log],
-      client_args: [%w(foo bar baz), []]).recorder
+      :server_args => [server_log],
+      :client_args => [%w(foo bar baz), []]).recorder
 
     assert_equal [
       "entering listening state", # on_enter called on the start state
@@ -100,14 +100,14 @@ class TestEventState < Test::Unit::TestCase
   def test_echo_basic
     assert_equal %w(foo bar baz), 
       run_server_and_client(EchoServer, EchoClient,
-        client_args: [%w(foo bar baz), []]).recorder
+        :client_args => [%w(foo bar baz), []]).recorder
   end
 
   def test_delayed_echo
     assert_equal %w(foo bar baz), 
       run_server_and_client(DelayedEchoServer, EchoClient,
-        server_args: [0.5],
-        client_args: [%w(foo bar baz), []]).recorder
+        :server_args => [0.5],
+        :client_args => [%w(foo bar baz), []]).recorder
   end
 
   def test_echo_with_object_protocol_client
@@ -154,8 +154,8 @@ DOT
     end
 
     assert_equal [
-      [:foo, [:recv, :hello], :bar],
-      [:bar, [:recv, :good_bye], :foo]], trans
+      [:bar, [:recv, :good_bye], :foo],
+      [:foo, [:recv, :hello], :bar]], trans.sort_by {|x| x.first.to_s}
   end
 
   class TestDSLNoNestedProtocols < EventState::Machine; end
@@ -293,8 +293,8 @@ DOT
     server_log = []
     client_log = []
     run_server_and_client(TestUnbindServer, TestDelayClient,
-                          server_args: [server_log,  1],
-                          client_args: [client_log, [2,2]])
+                          :server_args => [server_log,  1],
+                          :client_args => [client_log, [2,2]])
     assert_equal [
       "entered foo",
       "unbound in foo"], server_log
@@ -308,8 +308,8 @@ DOT
     server_log = []
     client_log = []
     run_server_and_client(TestUnbindServer, TestDelayClient,
-                          server_args: [server_log,  1],
-                          client_args: [client_log, [0.5,2]])
+                          :server_args => [server_log,  1],
+                          :client_args => [client_log, [0.5,2]])
     assert_equal [
       "entered foo",
       "entered bar",

@@ -208,7 +208,9 @@ module EventState
       #
       # @return [nil]
       #
-      def on_send *message_names, next_state_name
+      def on_send *args
+        next_state_name = args.pop
+        message_names = args
         raise "on_send must be called from a state block" unless @state
         message_names.flatten.each do |name|
           @state.on_sends[name] = next_state_name
@@ -241,7 +243,9 @@ module EventState
       #
       # @return [nil]
       #
-      def on_recv *message_names, next_state_name
+      def on_recv *args
+        next_state_name = args.pop
+        message_names = args
         raise "on_recv must be called from a state block" unless @state
         message_names.flatten.each do |name|
           @state.on_recvs[name] = next_state_name
