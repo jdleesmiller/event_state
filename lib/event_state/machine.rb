@@ -253,8 +253,9 @@ module EventState
       # state. By default, there is no limit. If you set a timeout without
       # passing a block, the default action is to call +close_connection+.
       #
-      # Note that the timeout block will not be executed if an unbind is
-      # received while in this state.
+      # Note that the timeout block will not be executed if unbind is called in
+      # this state. However, if the timeout block calls close_connection, the
+      # state's on_unbind handler will be called.
       #
       # Note that the timeout applies to all machines. If you want to set a
       # timeout 'at run time' that applies to the machine only while it is in a
