@@ -124,7 +124,9 @@ class TestEventState < Test::Unit::TestCase
 
   def test_print_state_machine_dot
     dot = EchoClient.print_state_machine_dot(:graph_options => 'rankdir=LR;')
-    assert_equal <<DOT, dot.string
+
+    # order isn't determined, but we'll get one of the following two
+    match_1 = dot.string == <<DOT
 digraph "EventState::EchoClient" {
   rankdir=LR;
   speaking [peripheries=2];
@@ -132,6 +134,15 @@ digraph "EventState::EchoClient" {
   listening -> speaking [color=blue,label="String"];
 }
 DOT
+    match_2 = dot.string == <<DOT
+digraph "EventState::EchoClient" {
+  rankdir=LR;
+  speaking [peripheries=2];
+  listening -> speaking [color=blue,label="String"];
+  speaking -> listening [color=red,label="String"];
+}
+DOT
+    assert match_1 || match_2
   end
 
   class TestDSLBasic < EventState::Machine; end
