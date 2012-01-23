@@ -2,6 +2,8 @@
 
 * http://github.com/jdleesmiller/event_state
 
+{<img src="https://secure.travis-ci.org/jdleesmiller/event_state.png"/>}[http://travis-ci.org/jdleesmiller/event_state]
+
 == SYNOPSIS
 
 A small embedded DSL for implementing stateful protocols in EventMachine using
