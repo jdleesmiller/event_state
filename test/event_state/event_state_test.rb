@@ -1,3 +1,6 @@
+#require 'simplecov'
+#SimpleCov.start
+
 require 'event_state'
 require 'test/unit'
 
@@ -5,6 +8,7 @@ require 'test/unit'
 require 'event_state/ex_echo'
 require 'event_state/ex_readme'
 require 'event_state/ex_secret'
+require 'event_state/ex_job'
 
 # give more helpful errors
 Thread.abort_on_exception = true
@@ -15,6 +19,9 @@ class TestEventState < Test::Unit::TestCase
   DEFAULT_HOST = 'localhost'
   DEFAULT_PORT = 14159
 
+  #
+  # Run server and client in the same EventMachine reactor. Returns the client.
+  #
   def run_server_and_client server_class, client_class, opts={}, &block
     host = opts[:host] || DEFAULT_HOST
     port = opts[:port] || DEFAULT_PORT
@@ -32,6 +39,40 @@ class TestEventState < Test::Unit::TestCase
                                     *client_args, &block)
     end
     client
+  end
+
+  #
+  # Spawn the given server in a new process (fork) and yield once it's up and
+  # running.
+  #
+  # This works by spawning a child process and starting an EventMachine reactor
+  # in the child process. You should start a new one in the given block, if you
+  # want to connect a client.
+  #
+  def with_forked_server server_class, server_args=[], opts={}, &block
+    host = opts[:host] || DEFAULT_HOST
+    port = opts[:port] || DEFAULT_PORT
+
+    # use a pipe to signal the parent that the child server has started
+    p_r, p_w = IO.pipe
+    child_pid = fork do
+      p_r.close
+      EventMachine.run do
+        EventMachine.start_server(host, port, server_class, *server_args)
+        p_w.puts
+        p_w.close
+      end
+    end
+    p_w.close
+    p_r.gets # wait for child process to start server
+    p_r.close
+
+    begin
+      yield host, port
+    ensure
+      Process.kill 'TERM', child_pid
+      Process.wait
+    end
   end
 
   def run_echo_test client_class
@@ -119,7 +160,7 @@ DOT
 
   class TestDSLNoNestedProtocols < EventState::Machine; end
 
-  def test_dsl_no_nested_states
+  def test_dsl_no_nested_protocols
     #
     # nested protocol blocks are illegal
     #
@@ -354,6 +395,55 @@ DOT
     assert_equal   :recv, error.action
     assert_equal   Fixnum, error.message_name
     assert_equal   42, error.data
+  end
+
+  def test_job_server_timeouts
+    client_logs = [[],[],[],[]]
+    with_forked_server JobServer do |host, port|
+      EM.run do
+        EM.add_timer 0.1 do
+          EventMachine.connect(host, port, JobClient, 0.1, 1.0, client_logs[0])
+        end
+        EM.add_timer 0.5 do
+          EventMachine.connect(host, port, JobClient, 0.1, 1.0, client_logs[1])
+        end
+        EM.add_timer 1.5 do
+          EventMachine.connect(host, port, JobClient, 0.1, 2.5, client_logs[2])
+        end
+        EM.add_timer 4.5 do
+          EventMachine.connect(host, port, JobClient, 1.5, 0.5, client_logs[3])
+        end
+        EM.add_timer 7 do
+          EM.stop
+        end
+      end
+    end
+
+    # first client gets its job processed
+    assert_equal [
+      'starting',
+      'entering sending state',
+      'sending job',
+      'closed: work: 1.0'], client_logs[0]
+
+    # second client tries while job is still being processed
+    assert_equal [
+      'starting',
+      'busy'], client_logs[1]
+
+    # third client's job time gets sent but times out
+    assert_equal [
+      'starting',
+      'entering sending state',
+      'sending job',
+      'timed out in waiting state',
+      'unbind in waiting state'], client_logs[2]
+
+    # fourth client waits too long to send the job; server gives up
+    assert_equal [
+      'starting',
+      'entering sending state',
+      'unbind in sending state'], client_logs[3]
   end
 end
 

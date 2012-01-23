@@ -25,16 +25,24 @@ module EventState
   # @attr [Hash<Symbol, Symbol>] on_recvs map from message names to successor
   #       state names
   #
+  # @attr [Numeric, nil] timeout limit on the number of seconds to spend in this
+  #       state; the +on_timeout+ block is called after this elapses
+  #
+  # @attr [Proc] on_timeout called when the timeout elapses; by default, it
+  #       calls +close_connection+
+  #
   State = Struct.new(:name,
     :on_enters, :default_on_enter,
     :on_exits,  :default_on_exit,
-    :on_unbind, :on_sends,  :on_recvs) do
+    :on_unbind, :on_sends,  :on_recvs,
+    :timeout, :on_timeout) do
     def initialize(*)
       super
-      self.on_enters ||= {}
-      self.on_exits  ||= {}
-      self.on_sends  ||= {}
-      self.on_recvs  ||= {}
+      self.on_enters  ||= {}
+      self.on_exits   ||= {}
+      self.on_sends   ||= {}
+      self.on_recvs   ||= {}
+      self.on_timeout ||= lambda { close_connection }
     end
 
     #

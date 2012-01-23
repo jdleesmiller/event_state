@@ -249,6 +249,32 @@ module EventState
       end
 
       #
+      # Set maximum time (in seconds) that the machine should spend in this
+      # state. By default, there is no limit. If you set a timeout without
+      # passing a block, the default action is to call +close_connection+.
+      #
+      # Note that the timeout block will not be executed if an unbind is
+      # received while in this state.
+      #
+      # Note that the timeout applies to all machines. If you want to set a
+      # timeout 'at run time' that applies to the machine only while it is in a
+      # particular state, see {#add_state_timer}.
+      #
+      # Internally, this uses EventMachine's +add_timer+ method. It is
+      # independent of EventMachine's +comm_inactivity_timeout+.
+      #
+      # @yield [] called once timeout elapses
+      #
+      # @return [nil]
+      #
+      def timeout timeout, &block
+        raise "on_recv must be called from a state block" unless @state
+        @state.timeout = timeout
+        @state.on_timeout = block if block_given?
+        nil
+      end
+
+      #
       # @return [Hash<Symbol, State>] map from state names (ruby symbols) to
       #         {State}s
       #
@@ -339,6 +365,11 @@ module EventState
     end
 
     #
+    # @return [State] the machine's current state
+    #
+    attr_reader :state
+
+    #
     # Called by +EventMachine+ when a new connection has been established. This
     # calls the +on_enter+ handler for the machine's start state with a +nil+
     # message.
@@ -350,13 +381,16 @@ module EventState
     #
     def post_init
       @state = self.class.start_state
+      @state_timer_sigs = []
+      add_state_timer @state.timeout, &@state.on_timeout if @state.timeout
       @state.call_on_enter self, nil, nil
       nil
     end
 
     #
     # Called by +EventMachine+ when a connection is closed. This calls the
-    # {on_unbind} handler for the current state. 
+    # {on_unbind} handler for the current state and then cancels all state
+    # timers. 
     #
     # @return [nil]
     #
@@ -364,7 +398,7 @@ module EventState
       #puts "#{self.class} UNBIND"
       handler = @state.on_unbind
       self.instance_exec(&handler) if handler 
-      nil
+      cancel_state_timers
     end
 
     #
@@ -452,15 +486,51 @@ module EventState
       nil
     end
 
+    #
+    # Add a timer that will be fired only while the machine is in the current
+    # state; the timer is cancelled when the machine leaves the current state
+    # (either by sending or receiving a message, or when unbind is called). 
+    #
+    # Internally, this uses EventMachine's +add_timer+ method.
+    #
+    # @param [Numeric] timeout in seconds
+    #
+    # @yield [] handler called after timeout
+    #
+    # @return [Integer] EventMachine timer signature
+    #
+    def add_state_timer timeout, &handler
+      sig = EM.add_timer(timeout) do
+        self.instance_exec(&handler)
+      end
+      @state_timer_sigs << sig
+      sig
+    end
+
     private
     
     #
     # Update @state and call appropriate on_exit and on_enter handlers.
     #
     def transition message_name, message, next_state_name
+      cancel_state_timers
       @state.call_on_exit  self, message_name, message
       @state = self.class.states[next_state_name]
+      add_state_timer @state.timeout, &@state.on_timeout if @state.timeout
       @state.call_on_enter self, message_name, message
+    end
+
+    #
+    # Cancel all EM timers added by {#add_state_timer}.
+    #
+    # @return [nil]
+    #
+    def cancel_state_timers
+      @state_timer_sigs.each do |sig|
+        EM.cancel_timer(sig)
+      end
+      @state_timer_sigs.clear
+      nil
     end
   end
 end

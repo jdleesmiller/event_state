@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'eventmachine', '~> 0.12.10'
 
   s.add_development_dependency 'gemma', '~> 2.0.0'
+  #s.add_development_dependency 'simplecov', '~> 0.5.4'
 
   s.files       = Dir.glob('{lib,bin}/**/*.rb') + %w(README.rdoc)
   s.test_files  = Dir.glob('test/**/*_test.rb')
