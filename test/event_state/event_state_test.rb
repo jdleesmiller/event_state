@@ -3,12 +3,14 @@
 
 require 'event_state'
 require 'test/unit'
+require 'simple_mock'
 
 # load example machines
 require 'event_state/ex_echo'
 require 'event_state/ex_readme'
 require 'event_state/ex_secret'
 require 'event_state/ex_job'
+require 'event_state/ex_hookable_echo'
 
 # give more helpful errors
 Thread.abort_on_exception = true
@@ -456,5 +458,25 @@ DOT
       'entering sending state',
       'unbind in sending state'], client_logs[3]
   end
+
+  def test_hookable_machine
+    callback = ::SimpleMock.new
+    callback.expect(:send_message, nil, ['My String'])
+    hookable = HookableEchoMachine.new
+    hookable.callback = callback
+    EM.run do
+      EM.add_timer 1 do
+        hookable.start
+      end
+      EM.add_timer 2 do
+        hookable.receive_message 'My String'
+      end
+      EM.add_timer 3 do
+        callback.verify
+        EM.stop
+      end
+    end
+  end
+
 end
 
