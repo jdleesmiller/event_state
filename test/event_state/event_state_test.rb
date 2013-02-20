@@ -3,7 +3,6 @@
 
 require 'event_state'
 require 'test/unit'
-require 'simple_mock'
 
 # load example machines
 require 'event_state/ex_echo'
@@ -460,9 +459,8 @@ DOT
   end
 
   def test_hookable_machine
-    callback = ::SimpleMock.new
-    callback.expect(:send_message, nil, ['My String'])
     hookable = HookableEchoMachine.new
+    callback = HookableTestCallback.new
     hookable.callback = callback
     EM.run do
       EM.add_timer 1 do
@@ -472,10 +470,12 @@ DOT
         hookable.receive_message 'My String'
       end
       EM.add_timer 3 do
-        callback.verify
         EM.stop
+        assert_equal 1, callback.no_of_invocations
+        assert_equal 'My String', callback.last_message
       end
     end
+
   end
 
 end

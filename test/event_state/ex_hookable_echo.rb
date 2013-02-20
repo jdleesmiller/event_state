@@ -19,6 +19,22 @@ module EventState
     end
   end
 
+  # For a single test we do not add a mock library
+  class HookableTestCallback
+
+    attr_accessor :no_of_invocations, :last_message
+
+
+    def send_message(message)
+      @last_message = message
+      @no_of_invocations ||= 0
+      @no_of_invocations += 1
+      nil
+    end
+
+
+  end
+
 
 
 end
