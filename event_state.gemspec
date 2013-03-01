@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
 
   s.rubyforge_project = 'event_state'
 
-  s.add_runtime_dependency 'eventmachine', '~> 0.12.10'
+  s.add_runtime_dependency 'eventmachine', '~> 1.0.0'
 
   s.add_development_dependency 'gemma', '~> 2.4.0'
   #s.add_development_dependency 'simplecov', '~> 0.5.4'
