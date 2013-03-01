@@ -9,6 +9,7 @@ require 'event_state/ex_echo'
 require 'event_state/ex_readme'
 require 'event_state/ex_secret'
 require 'event_state/ex_job'
+require 'event_state/ex_hookable_echo'
 
 # give more helpful errors
 Thread.abort_on_exception = true
@@ -456,5 +457,26 @@ DOT
       'entering sending state',
       'unbind in sending state'], client_logs[3]
   end
+
+  def test_hookable_machine
+    hookable = HookableEchoMachine.new
+    callback = HookableTestCallback.new
+    hookable.callback = callback
+    EM.run do
+      EM.add_timer 1 do
+        hookable.start
+      end
+      EM.add_timer 2 do
+        hookable.receive_message 'My String'
+      end
+      EM.add_timer 3 do
+        EM.stop
+        assert_equal 1, callback.no_of_invocations
+        assert_equal 'My String', callback.last_message
+      end
+    end
+
+  end
+
 end
 
